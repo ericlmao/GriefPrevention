@@ -118,6 +118,7 @@ public enum Messages
     CreateClaimInsufficientBlocks("You don't have enough blocks to claim that entire area.  You need {0} more blocks.", "0: additional blocks needed"),
     AbandonClaimAdvertisement("To delete another claim and free up some blocks, use /abandonclaim."),
     CreateClaimFailOverlapShort("Your selected area overlaps an existing claim."),
+    CreateClaimFailTooClose("Your selected area is within {0} blocks of an existing claim.", "0: buffer radius"),
     CreateClaimSuccess("Claim created!  Use /trust to share it with friends."),
     RescueAbortedMoved("You moved!  Rescue cancelled."),
     OnlyOwnersModifyClaims("Only {0} can modify this claim.", "0: owner name"),

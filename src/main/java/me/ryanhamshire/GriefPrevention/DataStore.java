@@ -38,6 +38,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -751,6 +752,104 @@ public abstract class DataStore
         return null;
     }
 
+    /**
+     * Get the top level claim whose buffer radius contains a location.
+     *
+     * @param location the location
+     * @return the nearby claim or null if the location is not within the buffer radius of any claim
+     */
+    public @Nullable Claim getClaimNear(@NotNull Location location)
+    {
+        return this.getClaimNear(location, null);
+    }
+
+    /**
+     * Get the top level claim whose buffer radius contains a location.
+     *
+     * @param location the location
+     * @param cachedClaim the cached claim, if any
+     * @return the nearby claim or null if the location is not within the buffer radius of any claim
+     */
+    synchronized public @Nullable Claim getClaimNear(@NotNull Location location, @Nullable Claim cachedClaim)
+    {
+        int radius = GriefPrevention.instance.config_claims_bufferRadius;
+        if (radius <= 0) return null;
+
+        if (cachedClaim != null && cachedClaim.parent != null) cachedClaim = cachedClaim.parent;
+        if (cachedClaim != null && cachedClaim.inDataStore && isInBuffer(cachedClaim, location, radius)) return cachedClaim;
+
+        int x = location.getBlockX();
+        int z = location.getBlockZ();
+        for (int chunkX = (x - radius) >> 4; chunkX <= (x + radius) >> 4; chunkX++)
+        {
+            for (int chunkZ = (z - radius) >> 4; chunkZ <= (z + radius) >> 4; chunkZ++)
+            {
+                ArrayList<Claim> claimsInChunk = this.chunksToClaimsMap.get(getChunkHash(chunkX, chunkZ));
+                if (claimsInChunk == null) continue;
+
+                for (Claim claim : claimsInChunk)
+                {
+                    if (claim.inDataStore && isInBuffer(claim, location, radius)) return claim;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean isInBuffer(@NotNull Claim claim, @NotNull Location location, int radius)
+    {
+        Location lesser = claim.getLesserBoundaryCorner();
+        Location greater = claim.getGreaterBoundaryCorner();
+        return claim.parent == null
+                && Objects.equals(location.getWorld(), lesser.getWorld())
+                && location.getBlockY() >= lesser.getBlockY()
+                && location.getBlockX() >= lesser.getBlockX() - radius && location.getBlockX() <= greater.getBlockX() + radius
+                && location.getBlockZ() >= lesser.getBlockZ() - radius && location.getBlockZ() <= greater.getBlockZ() + radius;
+    }
+
+    /**
+     * Get the claim protecting a location, either containing it or within the buffer radius.
+     *
+     * @param location the location
+     * @param cachedClaim the cached claim, if any
+     * @return the protecting claim or null if the location is unprotected
+     */
+    public @Nullable Claim getProtectingClaim(@NotNull Location location, @Nullable Claim cachedClaim)
+    {
+        return this.getProtectingClaim(location, false, cachedClaim);
+    }
+
+    /**
+     * Get the claim protecting a location, either containing it or within the buffer radius.
+     *
+     * @param location the location
+     * @param ignoreSubclaims whether subclaims should be returned over claims
+     * @param cachedClaim the cached claim, if any
+     * @return the protecting claim or null if the location is unprotected
+     */
+    synchronized public @Nullable Claim getProtectingClaim(@NotNull Location location, boolean ignoreSubclaims, @Nullable Claim cachedClaim)
+    {
+        Claim claim = this.getClaimAt(location, false, ignoreSubclaims, cachedClaim);
+        return claim != null ? claim : this.getClaimNear(location, cachedClaim);
+    }
+
+    /**
+     * Get the area protected by a claim, including the buffer radius for top level claims.
+     *
+     * @param claim the claim
+     * @return the protected area
+     */
+    public static @NotNull BoundingBox getProtectedBounds(@NotNull Claim claim)
+    {
+        BoundingBox bounds = new BoundingBox(claim);
+        int radius = GriefPrevention.instance.config_claims_bufferRadius;
+        if (claim.parent != null || radius <= 0) return bounds;
+
+        return new BoundingBox(bounds.getMinX() - radius, bounds.getMinY(), bounds.getMinZ() - radius,
+                bounds.getMaxX() + radius, bounds.getMaxY(), bounds.getMaxZ() + radius);
+    }
+
     //finds a claim by ID
     public synchronized Claim getClaim(long id)
     {
@@ -961,6 +1060,25 @@ public abstract class DataStore
                 result.succeeded = false;
                 result.claim = otherClaim;
                 return result;
+            }
+        }
+
+        //new top level claims can't be made within the buffer radius of another claim
+        int bufferRadius = GriefPrevention.instance.config_claims_bufferRadius;
+        if (newClaim.parent == null && id == null && bufferRadius > 0)
+        {
+            BoundingBox buffer = new BoundingBox(smallx - bufferRadius, smally, smallz - bufferRadius, bigx + bufferRadius, smally, bigz + bufferRadius);
+            for (Claim otherClaim : this.getChunkClaims(world, buffer))
+            {
+                BoundingBox other = new BoundingBox(otherClaim);
+                if (otherClaim.parent == null && buffer.getMinX() <= other.getMaxX() && buffer.getMaxX() >= other.getMinX()
+                        && buffer.getMinZ() <= other.getMaxZ() && buffer.getMaxZ() >= other.getMinZ())
+                {
+                    result.succeeded = false;
+                    result.claim = otherClaim;
+                    result.tooClose = true;
+                    return result;
+                }
             }
         }
 

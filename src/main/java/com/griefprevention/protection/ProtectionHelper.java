@@ -54,8 +54,7 @@ public final class ProtectionHelper
         // Administrators ignoring claims always have permission.
         if (playerData.ignoreClaims) return null;
 
-        Claim claim = GriefPrevention.instance.dataStore.getClaimAt(location, false, playerData.lastClaim);
-
+        Claim claim = GriefPrevention.instance.dataStore.getProtectingClaim(location, playerData.lastClaim);
 
         // If there is no claim here, use wilderness rules.
         if (claim == null)

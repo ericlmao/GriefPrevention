@@ -176,7 +176,13 @@ public class ClaimCommand extends CommandHandler
                 ownerId, null, null, player);
         if (!result.succeeded || result.claim == null)
         {
-            if (result.claim != null)
+            if (result.tooClose)
+            {
+                GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimFailTooClose, String.valueOf(plugin.config_claims_bufferRadius));
+
+                BoundaryVisualization.visualizeClaim(player, result.claim, VisualizationType.CONFLICT_ZONE);
+            }
+            else if (result.claim != null)
             {
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimFailOverlapShort);
 
