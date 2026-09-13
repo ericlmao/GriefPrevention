@@ -295,7 +295,7 @@ public class EntityDamageHandler implements Listener
         // but also doesn't disable self-damage.
         if (entity instanceof Player) return false;
 
-        Claim claim = dataStore.getClaimAt(entity.getLocation(), false, null);
+        Claim claim = dataStore.getProtectingClaim(entity.getLocation(), null);
 
         // Only block explosion damage inside claims.
         if (claim == null) return false;
@@ -480,7 +480,7 @@ public class EntityDamageHandler implements Listener
         // Note: Internal name is not descriptive. Actual node is "GriefPrevention.PVP.ProtectPetsOutsideLandClaims"
         if (!instance.config_pvp_protectPets)
         {
-            claim = dataStore.getClaimAt(event.damaged().getLocation(), false, attackerData.lastClaim);
+            claim = dataStore.getProtectingClaim(event.damaged().getLocation(), attackerData.lastClaim);
             if (claim == null)
             {
                 // Pet is not in a claim, allow attack.
@@ -594,7 +594,7 @@ public class EntityDamageHandler implements Listener
             cachedClaim = playerData.lastClaim;
         }
 
-        Claim claim = this.dataStore.getClaimAt(event.damaged().getLocation(), false, cachedClaim);
+        Claim claim = this.dataStore.getProtectingClaim(event.damaged().getLocation(), cachedClaim);
 
         // If the area is not claimed, do not handle.
         if (claim == null) return false;
@@ -666,7 +666,7 @@ public class EntityDamageHandler implements Listener
             cachedClaim = playerData.lastClaim;
         }
 
-        Claim claim = this.dataStore.getClaimAt(event.damaged().getLocation(), false, cachedClaim);
+        Claim claim = this.dataStore.getProtectingClaim(event.damaged().getLocation(), cachedClaim);
 
         // Require a claim to handle.
         if (claim == null) return false;
@@ -881,7 +881,7 @@ public class EntityDamageHandler implements Listener
             cachedClaim = playerData.lastClaim;
         }
 
-        Claim claim = this.dataStore.getClaimAt(event.getVehicle().getLocation(), false, cachedClaim);
+        Claim claim = this.dataStore.getProtectingClaim(event.getVehicle().getLocation(), cachedClaim);
 
         // Require a claim.
         if (claim == null) return;
@@ -947,7 +947,7 @@ public class EntityDamageHandler implements Listener
 
                     if (affected.getType() == EntityType.VILLAGER || affected instanceof Animals)
                     {
-                        Claim claim = this.dataStore.getClaimAt(affected.getLocation(), false, cachedClaim);
+                        Claim claim = this.dataStore.getProtectingClaim(affected.getLocation(), cachedClaim);
                         if (claim != null)
                         {
                             cachedClaim = claim;

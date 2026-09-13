@@ -28,4 +28,6 @@ public class CreateClaimResult
     //when succeeded, this is a reference to the new claim
     //when failed, this is a reference to the pre-existing, conflicting claim
     public @Nullable Claim claim;
+
+    public boolean tooClose;
 }

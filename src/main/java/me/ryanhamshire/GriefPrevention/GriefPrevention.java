@@ -142,6 +142,7 @@ public class GriefPrevention extends JavaPlugin
     public int config_claims_claimsExtendIntoGroundDistance;        //how far below the shoveled block a new claim will reach
     public int config_claims_minWidth;                                //minimum width for non-admin claims
     public int config_claims_minArea;                               //minimum area for non-admin claims
+    public int config_claims_bufferRadius;                          //how far around a claim untrusted players are restricted and new claims are blocked.  0 to disable
 
     public int config_claims_chestClaimExpirationDays;                //number of days of inactivity before an automatic chest claim will be deleted
     public boolean config_claims_allowTrappedInAdminClaims;            //whether it should be allowed to use /trapped in adminclaims.
@@ -561,6 +562,7 @@ public class GriefPrevention extends JavaPlugin
         this.config_claims_claimsExtendIntoGroundDistance = Math.abs(config.getInt("GriefPrevention.Claims.ExtendIntoGroundDistance", 5));
         this.config_claims_minWidth = config.getInt("GriefPrevention.Claims.MinimumWidth", 5);
         this.config_claims_minArea = config.getInt("GriefPrevention.Claims.MinimumArea", 100);
+        this.config_claims_bufferRadius = Math.max(0, config.getInt("GriefPrevention.Claims.BufferRadius", 30));
 
         this.config_claims_minY = config.getInt("GriefPrevention.Claims.MinimumY", Integer.MIN_VALUE);
         // Warn if MinimumY is set above sea level, as this is likely unintended
@@ -757,6 +759,7 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.Claims.ExtendIntoGroundDistance", this.config_claims_claimsExtendIntoGroundDistance);
         outConfig.set("GriefPrevention.Claims.MinimumWidth", this.config_claims_minWidth);
         outConfig.set("GriefPrevention.Claims.MinimumArea", this.config_claims_minArea);
+        outConfig.set("GriefPrevention.Claims.BufferRadius", this.config_claims_bufferRadius);
         outConfig.set("GriefPrevention.Claims.MinimumY", this.config_claims_minY);
         outConfig.set("GriefPrevention.Claims.InvestigationTool", this.config_claims_investigationTool.name());
         outConfig.set("GriefPrevention.Claims.ModificationTool", this.config_claims_modificationTool.name());

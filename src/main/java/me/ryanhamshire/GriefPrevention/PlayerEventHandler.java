@@ -1147,7 +1147,7 @@ class PlayerEventHandler implements Listener
         if (instance.config_claims_preventTheft && entity instanceof Vehicle)
         {
             //if the entity is in a claim
-            Claim claim = this.dataStore.getClaimAt(entity.getLocation(), false, null);
+            Claim claim = this.dataStore.getProtectingClaim(entity.getLocation(), null);
             if (claim != null)
             {
                 //for storage entities, apply container rules (this is a potential theft)
@@ -1168,7 +1168,7 @@ class PlayerEventHandler implements Listener
         if ((instance.config_claims_preventTheft && (entity instanceof Animals || entity instanceof Fish || entity instanceof CopperGolem)) || (entity.getType() == EntityType.VILLAGER && instance.config_claims_villagerTradingRequiresTrust))
         {
             //if the entity is in a claim
-            Claim claim = this.dataStore.getClaimAt(entity.getLocation(), false, null);
+            Claim claim = this.dataStore.getProtectingClaim(entity.getLocation(), null);
             if (claim != null)
             {
                 Supplier<String> override = () ->
@@ -1194,7 +1194,7 @@ class PlayerEventHandler implements Listener
         //if preventing theft, prevent leashing claimed creatures
         if (instance.config_claims_preventTheft && entity instanceof Creature && itemInHand.getType() == Material.LEAD)
         {
-            Claim claim = this.dataStore.getClaimAt(entity.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(entity.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 Supplier<String> failureReason = claim.checkPermission(player, ClaimPermission.Container, event);
@@ -1214,7 +1214,7 @@ class PlayerEventHandler implements Listener
             if (!instance.claimsEnabledForWorld(entity.getWorld())) return;
 
             Claim cachedClaim = playerData.lastClaim;
-            Claim claim = this.dataStore.getClaimAt(entity.getLocation(), false, cachedClaim);
+            Claim claim = this.dataStore.getProtectingClaim(entity.getLocation(), cachedClaim);
 
             // Require a claim to handle.
             if (claim == null) return;
@@ -1245,7 +1245,7 @@ class PlayerEventHandler implements Listener
     {
         Player player = event.getPlayer();
         PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
-        Claim claim = this.dataStore.getClaimAt(event.getEgg().getLocation(), false, playerData.lastClaim);
+        Claim claim = this.dataStore.getProtectingClaim(event.getEgg().getLocation(), playerData.lastClaim);
 
         //allow throw egg if player is in ignore claims mode
         if (playerData.ignoreClaims || claim == null) return;
@@ -1284,7 +1284,7 @@ class PlayerEventHandler implements Listener
         {
             Player player = event.getPlayer();
             PlayerData playerData = instance.dataStore.getPlayerData(player.getUniqueId());
-            Claim claim = instance.dataStore.getClaimAt(entity.getLocation(), false, playerData.lastClaim);
+            Claim claim = instance.dataStore.getProtectingClaim(entity.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 //if no permission, cancel
@@ -1513,7 +1513,7 @@ class PlayerEventHandler implements Listener
             if (clickedBlockType != Material.TURTLE_EGG)
                 return;
             playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 playerData.lastClaim = claim;
@@ -1566,7 +1566,7 @@ class PlayerEventHandler implements Listener
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
 
             //check if player is in a claim for pvp and permission checks below
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
 
             //block container use during pvp combat in claimed areas, same reason as above, so players
             //can't hide items from attackers
@@ -1612,7 +1612,7 @@ class PlayerEventHandler implements Listener
                 instance.config_claims_lockFenceGates && Tag.FENCE_GATES.isTagged(clickedBlockType)))
         {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 playerData.lastClaim = claim;
@@ -1631,7 +1631,7 @@ class PlayerEventHandler implements Listener
         else if (clickedBlock != null && instance.config_claims_preventButtonsSwitches && (Tag.BUTTONS.isTagged(clickedBlockType) || clickedBlockType == Material.LEVER))
         {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 playerData.lastClaim = claim;
@@ -1650,7 +1650,7 @@ class PlayerEventHandler implements Listener
         else if (clickedBlock != null && instance.config_claims_preventTheft && (clickedBlockType == Material.CAKE || Tag.CANDLE_CAKES.isTagged(clickedBlockType)))
         {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 playerData.lastClaim = claim;
@@ -1680,7 +1680,7 @@ class PlayerEventHandler implements Listener
                 ))
         {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+            Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
             if (claim != null)
             {
                 Supplier<String> noBuildReason = claim.checkPermission(player, ClaimPermission.Build, event);
@@ -1727,7 +1727,7 @@ class PlayerEventHandler implements Listener
             else if (clickedBlock != null && Tag.ITEMS_BOATS.isTagged(materialInHand))
             {
                 if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+                Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
                 if (claim != null)
                 {
                     Supplier<String> reason = claim.checkPermission(player, ClaimPermission.Container, event);
@@ -1751,7 +1751,7 @@ class PlayerEventHandler implements Listener
                     !instance.creativeRulesApply(clickedBlock.getLocation()))
             {
                 if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+                Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
                 if (claim != null)
                 {
                     Supplier<String> reason = claim.checkPermission(player, ClaimPermission.Container, event);
@@ -2162,7 +2162,12 @@ class PlayerEventHandler implements Listener
                 //if it didn't succeed, tell the player why
                 if (!result.succeeded || result.claim == null)
                 {
-                    if (result.claim != null)
+                    if (result.tooClose)
+                    {
+                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimFailTooClose, String.valueOf(instance.config_claims_bufferRadius));
+                        BoundaryVisualization.visualizeClaim(player, result.claim, VisualizationType.CONFLICT_ZONE, clickedBlock);
+                    }
+                    else if (result.claim != null)
                     {
                         GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimFailOverlapShort);
                         BoundaryVisualization.visualizeClaim(player, result.claim, VisualizationType.CONFLICT_ZONE, clickedBlock);
@@ -2201,7 +2206,7 @@ class PlayerEventHandler implements Listener
     {
         Player player = event.getPlayer();
         PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
-        Claim claim = this.dataStore.getClaimAt(event.getLectern().getLocation(), false, playerData.lastClaim);
+        Claim claim = this.dataStore.getProtectingClaim(event.getLectern().getLocation(), playerData.lastClaim);
         if (claim != null)
         {
             playerData.lastClaim = claim;

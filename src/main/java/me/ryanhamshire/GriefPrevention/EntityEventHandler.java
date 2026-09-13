@@ -138,7 +138,7 @@ public class EntityEventHandler implements Listener
 
         else if (event.getEntityType() == EntityType.WITHER)
         {
-            Claim claim = this.dataStore.getClaimAt(event.getBlock().getLocation(), false, null);
+            Claim claim = this.dataStore.getProtectingClaim(event.getBlock().getLocation(), null);
             if (claim == null || !claim.areExplosivesAllowed || !GriefPrevention.instance.config_blockClaimExplosions)
             {
                 event.setCancelled(true);
@@ -222,13 +222,13 @@ public class EntityEventHandler implements Listener
         }
 
         //in other worlds, if landing in land claim, only allow if source was also in the land claim
-        Claim claim = this.dataStore.getClaimAt(blockLocation, false, null);
+        Claim claim = this.dataStore.getProtectingClaim(blockLocation, null);
 
         // If landing in a claim...
         if (claim != null)
         {
             // If the claim contains the formation point, allow block to form.
-            if (claim.contains(originalLocation, false, false)) return;
+            if (claim.contains(originalLocation, false, false) || this.dataStore.getProtectingClaim(originalLocation, claim) == claim) return;
 
             // If the claim is an unrestricted subclaim and the block is from
             // within the parent (but not another subclaim!) block may form.
@@ -259,7 +259,7 @@ public class EntityEventHandler implements Listener
     private void handleProjectileChangeBlock(EntityChangeBlockEvent event, Projectile projectile)
     {
         Block block = event.getBlock();
-        Claim claim = this.dataStore.getClaimAt(block.getLocation(), false, null);
+        Claim claim = this.dataStore.getProtectingClaim(block.getLocation(), null);
 
         // Wilderness rules
         if (claim == null)
@@ -342,7 +342,7 @@ public class EntityEventHandler implements Listener
     static boolean isBlockSourceInClaim(@Nullable ProjectileSource projectileSource, @Nullable Claim claim)
     {
         return projectileSource instanceof BlockProjectileSource &&
-                GriefPrevention.instance.dataStore.getClaimAt(((BlockProjectileSource) projectileSource).getBlock().getLocation(), false, claim) == claim;
+                GriefPrevention.instance.dataStore.getProtectingClaim(((BlockProjectileSource) projectileSource).getBlock().getLocation(), claim) == claim;
     }
 
     //don't allow zombies to break down doors
@@ -439,7 +439,7 @@ public class EntityEventHandler implements Listener
             // Always ignore air blocks.
             if (block.getType().isAir()) continue;
 
-            Claim claim = this.dataStore.getClaimAt(block.getLocation(), false, cachedClaim);
+            Claim claim = this.dataStore.getProtectingClaim(block.getLocation(), cachedClaim);
 
             // Is it in a land claim?
             if (claim == null) continue;
@@ -497,7 +497,7 @@ public class EntityEventHandler implements Listener
             if (block.getType().isAir()) continue;
 
             //is it in a land claim?
-            Claim claim = this.dataStore.getClaimAt(block.getLocation(), false, cachedClaim);
+            Claim claim = this.dataStore.getProtectingClaim(block.getLocation(), cachedClaim);
             if (claim != null)
             {
                 cachedClaim = claim;
@@ -685,7 +685,7 @@ public class EntityEventHandler implements Listener
         if (event.getEntity().getType() == EntityType.ENDERMAN)
         {
             //and the block is claimed
-            if (this.dataStore.getClaimAt(event.getBlock().getLocation(), false, null) != null)
+            if (this.dataStore.getProtectingClaim(event.getBlock().getLocation(), null) != null)
             {
                 //he doesn't get to steal it
                 event.setCancelled(true);
