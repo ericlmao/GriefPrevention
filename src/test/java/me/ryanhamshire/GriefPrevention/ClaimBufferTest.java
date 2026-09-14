@@ -175,4 +175,31 @@ class ClaimBufferTest
         assertEquals(denial, com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, inside, denial));
         assertTrue(denial != com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, outside, denial));
     }
+
+    @Test
+    void ignoreClaimsPlayerBypassesBufferOnCreate()
+    {
+        org.bukkit.entity.Player admin = mock(org.bukkit.entity.Player.class);
+        when(admin.getUniqueId()).thenReturn(OWNER);
+        PlayerData adminData = mock(PlayerData.class);
+        adminData.ignoreClaims = true;
+        org.mockito.Mockito.doReturn(adminData).when(dataStore).getPlayerData(OWNER);
+
+        CreateClaimResult result = dataStore.createClaim(world, 39, 49, 0, 0, 0, 9, OWNER, null, null, admin, true);
+        assertTrue(result.succeeded);
+        assertFalse(result.tooClose);
+    }
+
+    @Test
+    void normalPlayerCannotBypassBufferOnCreate()
+    {
+        org.bukkit.entity.Player player = mock(org.bukkit.entity.Player.class);
+        when(player.getUniqueId()).thenReturn(OWNER);
+        PlayerData playerData = mock(PlayerData.class);
+        org.mockito.Mockito.doReturn(playerData).when(dataStore).getPlayerData(OWNER);
+
+        CreateClaimResult result = dataStore.createClaim(world, 39, 49, 0, 0, 0, 9, OWNER, null, null, player, true);
+        assertFalse(result.succeeded);
+        assertTrue(result.tooClose);
+    }
 }

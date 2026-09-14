@@ -1063,9 +1063,10 @@ public abstract class DataStore
             }
         }
 
-        //new top level claims can't be made within the buffer radius of another claim
+        //new top level claims can't be made within the buffer radius of another claim, unless ignoring claims
         int bufferRadius = GriefPrevention.instance.config_claims_bufferRadius;
-        if (newClaim.parent == null && id == null && bufferRadius > 0)
+        if (newClaim.parent == null && id == null && bufferRadius > 0
+                && (creatingPlayer == null || !this.getPlayerData(creatingPlayer.getUniqueId()).ignoreClaims))
         {
             BoundingBox buffer = new BoundingBox(smallx - bufferRadius, smally, smallz - bufferRadius, bigx + bufferRadius, smally, bigz + bufferRadius);
             for (Claim otherClaim : this.getChunkClaims(world, buffer))
