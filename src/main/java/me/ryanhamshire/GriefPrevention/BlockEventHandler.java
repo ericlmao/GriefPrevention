@@ -858,7 +858,7 @@ public class BlockEventHandler implements Listener
             // If a player is present, check their permission in affected claims.
             conflictCheck = (claim, boundingBox) ->
             {
-                Supplier<String> supplier = claim.checkPermission(player, ClaimPermission.Build, event);
+                Supplier<String> supplier = ProtectionHelper.withBufferDenial(claim, box, claim.checkPermission(player, ClaimPermission.Build, event));
                 if (supplier != null)
                 {
                     // Warn when denied access to a claim.
@@ -1165,7 +1165,7 @@ public class BlockEventHandler implements Listener
             return;
         }
 
-        Supplier<String> allowContainer = claim.checkPermission(shooter, ClaimPermission.Container, event);
+        Supplier<String> allowContainer = ProtectionHelper.withBufferDenial(claim, block.getLocation(), claim.checkPermission(shooter, ClaimPermission.Container, event));
 
         if (allowContainer != null)
         {
@@ -1275,6 +1275,7 @@ public class BlockEventHandler implements Listener
             return;
         }
 
+        BoundingBox box = BoundingBox.ofStates(event.getBlocks());
         BiPredicate<Claim, BoundingBox> predicate;
         Entity entity = event.getEntity();
         if (entity == null)
@@ -1286,7 +1287,7 @@ public class BlockEventHandler implements Listener
         {
             predicate = (claim, claimBoundingBox) ->
             {
-                Supplier<String> noPortalReason = claim.checkPermission(player, ClaimPermission.Build, event);
+                Supplier<String> noPortalReason = ProtectionHelper.withBufferDenial(claim, box, claim.checkPermission(player, ClaimPermission.Build, event));
 
                 if (noPortalReason != null)
                 {
@@ -1308,7 +1309,6 @@ public class BlockEventHandler implements Listener
             };
         }
 
-        BoundingBox box = BoundingBox.ofStates(event.getBlocks());
         if (boxConflictsWithClaims(event.getWorld(), box, null, predicate))
         {
             event.setCancelled(true);

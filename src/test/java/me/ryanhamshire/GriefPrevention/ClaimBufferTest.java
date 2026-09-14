@@ -156,4 +156,23 @@ class ClaimBufferTest
     {
         assertNull(dataStore.getClaimNear(new Location(world, 20, -1, 5)));
     }
+
+    @Test
+    void bufferDenialReplacesMessageOutsideClaim()
+    {
+        java.util.function.Supplier<String> denial = () -> "original";
+        assertNull(com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, new Location(world, 20, 64, 5), null));
+        assertEquals(denial, com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, new Location(world, 5, 64, 5), denial));
+        assertTrue(denial != com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, new Location(world, 20, 64, 5), denial));
+    }
+
+    @Test
+    void bufferDenialForAreaOnlyWhenOutsideClaim()
+    {
+        java.util.function.Supplier<String> denial = () -> "original";
+        me.ryanhamshire.GriefPrevention.util.BoundingBox inside = new me.ryanhamshire.GriefPrevention.util.BoundingBox(8, 64, 8, 12, 70, 12);
+        me.ryanhamshire.GriefPrevention.util.BoundingBox outside = new me.ryanhamshire.GriefPrevention.util.BoundingBox(15, 64, 15, 20, 70, 20);
+        assertEquals(denial, com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, inside, denial));
+        assertTrue(denial != com.griefprevention.protection.ProtectionHelper.withBufferDenial(existing, outside, denial));
+    }
 }

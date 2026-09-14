@@ -279,7 +279,7 @@ public class EntityEventHandler implements Listener
 
         if (shooter instanceof Player)
         {
-            Supplier<String> denial = claim.checkPermission((Player) shooter, ClaimPermission.Build, event);
+            Supplier<String> denial = ProtectionHelper.withBufferDenial(claim, block.getLocation(), claim.checkPermission((Player) shooter, ClaimPermission.Build, event));
 
             // If the player cannot place the material being broken, disallow.
             if (denial != null)

@@ -8,6 +8,7 @@ import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.Messages;
 import me.ryanhamshire.GriefPrevention.PlayerData;
 import me.ryanhamshire.GriefPrevention.events.PreventBlockBreakEvent;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -88,7 +89,7 @@ public final class ProtectionHelper
         playerData.lastClaim = claim;
 
         // Apply claim rules.
-        Supplier<String> cancel = claim.checkPermission(player, permission, trigger);
+        Supplier<String> cancel = withBufferDenial(claim, location, claim.checkPermission(player, permission, trigger));
 
         // Apply additional specific rules.
         if (cancel != null && trigger instanceof BlockBreakEvent breakEvent)
@@ -102,6 +103,46 @@ public final class ProtectionHelper
         }
 
         return cancel;
+    }
+
+    /**
+     * Replace a denial with the claim buffer message if the location is outside the claim itself.
+     *
+     * @param claim the claim protecting the location
+     * @param location the affected {@link Location}
+     * @param denial the original denial message supplier, if any
+     * @return the denial message supplier, or {@code null} if the action is not denied
+     */
+    public static @Nullable Supplier<String> withBufferDenial(
+            @NotNull Claim claim,
+            @NotNull Location location,
+            @Nullable Supplier<String> denial)
+    {
+        if (denial == null || claim.contains(location, false, false)) return denial;
+        return bufferDenial(claim);
+    }
+
+    /**
+     * Replace a denial with the claim buffer message if the area does not intersect the claim itself.
+     *
+     * @param claim the claim protecting the area
+     * @param area the affected area
+     * @param denial the original denial message supplier, if any
+     * @return the denial message supplier, or {@code null} if the action is not denied
+     */
+    public static @Nullable Supplier<String> withBufferDenial(
+            @NotNull Claim claim,
+            @NotNull BoundingBox area,
+            @Nullable Supplier<String> denial)
+    {
+        if (denial == null || new BoundingBox(claim).intersects(area)) return denial;
+        return bufferDenial(claim);
+    }
+
+    private static @NotNull Supplier<String> bufferDenial(@NotNull Claim claim)
+    {
+        return () -> GriefPrevention.instance.dataStore.getMessage(Messages.NoPermissionNearClaim,
+                String.valueOf(GriefPrevention.instance.config_claims_bufferRadius), claim.getOwnerName());
     }
 
 }
