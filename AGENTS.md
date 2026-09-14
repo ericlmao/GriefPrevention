@@ -9,9 +9,10 @@
 
 ### Storage
 
-- All plugin data lives in `storage/GriefPrevention/`, never in `plugins/`. The `plugins/` folder holds only the jar.
-- Every data path derives from `DataStore.dataLayerFolderPath`. Never hardcode `plugins/` or `storage/` elsewhere.
-- Any change that moves data files must ship an automatic migration that runs on enable before data is read, and must leave existing data untouched when both old and new locations have files.
+- Generated data lives in `storage/GriefPrevention/`: only `ClaimData`, `PlayerData`, and `Logs` (plus numbered backups like `ClaimData1`).
+- Settings stay in `plugins/GriefPreventionData/`: `config.yml`, `messages.yml`, `bannedWords.txt`, `softMute.txt`, `database.properties`, `_schemaVersion`.
+- Data paths derive from `DataStore.storageFolderPath`. Settings paths derive from `DataStore.dataLayerFolderPath`. Never hardcode `plugins/` or `storage/` elsewhere.
+- Any change that moves files must ship an automatic migration that runs on enable before anything is read, and must never overwrite when both old and new locations have data.
 
 ### Issues
 

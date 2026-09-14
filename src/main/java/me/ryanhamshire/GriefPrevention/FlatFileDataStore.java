@@ -47,7 +47,7 @@ import java.util.regex.Matcher;
 //manages data stored in the file system
 public class FlatFileDataStore extends DataStore
 {
-    private final static String claimDataFolderPath = dataLayerFolderPath + File.separator + "ClaimData";
+    private final static String claimDataFolderPath = storageFolderPath + File.separator + "ClaimData";
     private final static String nextClaimIdFilePath = claimDataFolderPath + File.separator + "_nextClaimID";
     private final static String schemaVersionFilePath = dataLayerFolderPath + File.separator + "_schemaVersion";
 
