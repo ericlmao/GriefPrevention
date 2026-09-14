@@ -1,5 +1,6 @@
 package me.ryanhamshire.GriefPrevention;
 
+import com.griefprevention.protection.ProtectionHelper;
 import me.ryanhamshire.GriefPrevention.events.PreventPvPEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -606,7 +607,7 @@ public class EntityDamageHandler implements Listener
             return true;
         }
 
-        Supplier<String> failureReason = claim.checkPermission(attacker, ClaimPermission.Build, event.original());
+        Supplier<String> failureReason = ProtectionHelper.withBufferDenial(claim, event.damaged().getLocation(), claim.checkPermission(attacker, ClaimPermission.Build, event.original()));
 
         // If player has build trust, fall through to next checks.
         if (failureReason == null) return false;
@@ -700,7 +701,7 @@ public class EntityDamageHandler implements Listener
         }
 
         // Check for permission to access containers.
-        Supplier<String> noContainersReason = claim.checkPermission(attacker, ClaimPermission.Container, event.original(), override);
+        Supplier<String> noContainersReason = ProtectionHelper.withBufferDenial(claim, event.damaged().getLocation(), claim.checkPermission(attacker, ClaimPermission.Container, event.original(), override));
 
         // If player has permission, action is allowed.
         if (noContainersReason == null) return true;
@@ -903,7 +904,7 @@ public class EntityDamageHandler implements Listener
                 message += "  " + dataStore.getMessage(Messages.IgnoreClaimsAdvertisement);
             return message;
         };
-        Supplier<String> noContainersReason = claim.checkPermission(attacker, ClaimPermission.Container, event, override);
+        Supplier<String> noContainersReason = ProtectionHelper.withBufferDenial(claim, event.getVehicle().getLocation(), claim.checkPermission(attacker, ClaimPermission.Container, event, override));
         if (noContainersReason != null)
         {
             event.setCancelled(true);
@@ -965,7 +966,7 @@ public class EntityDamageHandler implements Listener
                             {
                                 // Source is a player. Determine if they have permission to access entities in the claim.
                                 Supplier<String> override = () -> instance.dataStore.getMessage(Messages.NoDamageClaimedEntity, claim.getOwnerName());
-                                final Supplier<String> noContainersReason = claim.checkPermission(thrower, ClaimPermission.Container, event, override);
+                                final Supplier<String> noContainersReason = ProtectionHelper.withBufferDenial(claim, affected.getLocation(), claim.checkPermission(thrower, ClaimPermission.Container, event, override));
                                 if (noContainersReason != null)
                                 {
                                     event.setIntensity(affected, 0);

@@ -126,6 +126,7 @@ public enum Messages
     NoBuildPermission("You don't have {0}'s permission to build here.", "0: owner name"),
     NoAccessPermission("You don't have {0}'s permission to use that.", "0: owner name.  access permission controls buttons, levers, and beds"),
     NoContainersPermission("You don't have {0}'s permission to use that.", "0: owner's name.  containers also include crafting blocks"),
+    NoPermissionNearClaim("You can't do that within {0} blocks of {1}'s claim.", "0: buffer radius, 1: owner name"),
     OwnerNameForAdminClaims("an administrator", "as in 'You don't have an administrator's permission to build here.'"),
     UnknownPlayerName("someone", "Name used for unknown players. UUID will be appended if available: \"someone (01234567-0123-0123-0123-0123456789ab)\""),
     ClaimTooSmallForEntities("This claim isn't big enough for that.  Try enlarging it."),
