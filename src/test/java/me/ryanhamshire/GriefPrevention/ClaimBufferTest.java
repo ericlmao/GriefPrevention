@@ -28,6 +28,7 @@ import static org.mockito.Mockito.withSettings;
 class ClaimBufferTest
 {
     private static final UUID OWNER = UUID.fromString("fa8d60a7-9645-4a9f-b74d-173966174739");
+    private static final UUID OTHER = UUID.fromString("0f6d3a2e-1b4c-4d5e-8f70-123456789abc");
 
     private World world;
     private DataStore dataStore;
@@ -99,7 +100,7 @@ class ClaimBufferTest
     @Test
     void newClaimWithinBufferFails()
     {
-        CreateClaimResult result = dataStore.createClaim(world, 39, 49, 0, 0, 0, 9, OWNER, null, null, null, true);
+        CreateClaimResult result = dataStore.createClaim(world, 39, 49, 0, 0, 0, 9, OTHER, null, null, null, true);
         assertFalse(result.succeeded);
         assertTrue(result.tooClose);
         assertEquals(existing, result.claim);
@@ -109,12 +110,12 @@ class ClaimBufferTest
     void newClaimNeedsSixtyBlockGap()
     {
         // Existing claim ends at x = 9. Starting at x = 69 leaves a 59 block gap, x = 70 leaves 60.
-        CreateClaimResult tooClose = dataStore.createClaim(world, 69, 79, 0, 0, 0, 9, OWNER, null, null, null, true);
+        CreateClaimResult tooClose = dataStore.createClaim(world, 69, 79, 0, 0, 0, 9, OTHER, null, null, null, true);
         assertFalse(tooClose.succeeded);
         assertTrue(tooClose.tooClose);
         assertEquals(existing, tooClose.claim);
 
-        CreateClaimResult farEnough = dataStore.createClaim(world, 70, 80, 0, 0, 0, 9, OWNER, null, null, null, true);
+        CreateClaimResult farEnough = dataStore.createClaim(world, 70, 80, 0, 0, 0, 9, OTHER, null, null, null, true);
         assertTrue(farEnough.succeeded);
         assertFalse(farEnough.tooClose);
     }
@@ -193,11 +194,11 @@ class ClaimBufferTest
     void normalPlayerCannotBypassBufferOnCreate()
     {
         org.bukkit.entity.Player player = mock(org.bukkit.entity.Player.class);
-        when(player.getUniqueId()).thenReturn(OWNER);
+        when(player.getUniqueId()).thenReturn(OTHER);
         PlayerData playerData = mock(PlayerData.class);
-        org.mockito.Mockito.doReturn(playerData).when(dataStore).getPlayerData(OWNER);
+        org.mockito.Mockito.doReturn(playerData).when(dataStore).getPlayerData(OTHER);
 
-        CreateClaimResult result = dataStore.createClaim(world, 39, 49, 0, 0, 0, 9, OWNER, null, null, player, true);
+        CreateClaimResult result = dataStore.createClaim(world, 39, 49, 0, 0, 0, 9, OTHER, null, null, player, true);
         assertFalse(result.succeeded);
         assertTrue(result.tooClose);
     }
@@ -266,8 +267,8 @@ class ClaimBufferTest
     @Test
     void biggerButNewerClaimCannotResizeIntoBuffer() throws ReflectiveOperationException
     {
-        addClaim(2L, 100, 0, 149, 49, UUID.randomUUID());
-        CreateClaimResult result = dataStore.createClaim(world, 50, 149, 0, 0, 0, 49, OWNER, null, 2L, null, true);
+        addClaim(2L, 100, 0, 149, 49, OTHER);
+        CreateClaimResult result = dataStore.createClaim(world, 50, 149, 0, 0, 0, 49, OTHER, null, 2L, null, true);
         assertFalse(result.succeeded);
         assertTrue(result.tooClose);
         assertEquals(existing, result.claim);
@@ -338,14 +339,47 @@ class ClaimBufferTest
     @Test
     void ignoreClaimsPlayerBypassesBufferOnResize() throws ReflectiveOperationException
     {
-        addClaim(2L, 100, 0, 149, 49, UUID.randomUUID());
+        addClaim(2L, 100, 0, 149, 49, OTHER);
         org.bukkit.entity.Player admin = mock(org.bukkit.entity.Player.class);
-        when(admin.getUniqueId()).thenReturn(OWNER);
+        when(admin.getUniqueId()).thenReturn(OTHER);
         PlayerData adminData = mock(PlayerData.class);
         adminData.ignoreClaims = true;
-        org.mockito.Mockito.doReturn(adminData).when(dataStore).getPlayerData(OWNER);
+        org.mockito.Mockito.doReturn(adminData).when(dataStore).getPlayerData(OTHER);
 
-        CreateClaimResult result = dataStore.createClaim(world, 50, 149, 0, 0, 0, 49, OWNER, null, 2L, admin, true);
+        CreateClaimResult result = dataStore.createClaim(world, 50, 149, 0, 0, 0, 49, OTHER, null, 2L, admin, true);
+        assertTrue(result.succeeded);
+    }
+
+    @Test
+    void sameOwnerCanCreateClaimInsideOwnBuffer()
+    {
+        CreateClaimResult result = dataStore.createClaim(world, 20, 30, 0, 0, 0, 9, OWNER, null, null, null, true);
+        assertTrue(result.succeeded);
+        assertFalse(result.tooClose);
+    }
+
+    @Test
+    void sameOwnerCanResizeIntoOwnBuffer() throws ReflectiveOperationException
+    {
+        addClaim(2L, 100, 0, 149, 49, OWNER);
+        CreateClaimResult result = dataStore.createClaim(world, 0, 90, 0, 0, 0, 9, OWNER, null, 1L, null, true);
+        assertTrue(result.succeeded);
+    }
+
+    @Test
+    void sameOwnerStillCannotOverlapOwnClaim()
+    {
+        CreateClaimResult result = dataStore.createClaim(world, 5, 20, 0, 0, 0, 9, OWNER, null, null, null, true);
+        assertFalse(result.succeeded);
+        assertFalse(result.tooClose);
+        assertEquals(existing, result.claim);
+    }
+
+    @Test
+    void adminClaimsDoNotBlockEachOther() throws ReflectiveOperationException
+    {
+        addClaim(2L, 100, 0, 104, 4, null);
+        CreateClaimResult result = dataStore.createClaim(world, 110, 120, 0, 0, 0, 9, null, null, null, null, true);
         assertTrue(result.succeeded);
     }
 }

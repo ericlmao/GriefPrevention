@@ -1108,7 +1108,7 @@ public abstract class DataStore
             }
         }
 
-        //top level claims must keep their buffers apart, unless ignoring claims
+        //top level claims must keep their buffers apart from other owners' claims, unless ignoring claims
         int bufferRadius = GriefPrevention.instance.config_claims_bufferRadius;
         if (newClaim.parent == null && bufferRadius > 0
                 && (creatingPlayer == null || !this.getPlayerData(creatingPlayer.getUniqueId()).ignoreClaims))
@@ -1119,6 +1119,9 @@ public abstract class DataStore
             for (Claim otherClaim : this.getChunkClaims(world, searchArea))
             {
                 if (otherClaim.parent != null || Objects.equals(otherClaim.id, id)) continue;
+
+                // A player's own claims never block each other.
+                if (Objects.equals(otherClaim.ownerID, ownerID)) continue;
 
                 BoundingBox other = new BoundingBox(otherClaim);
                 int distance = boxDistance(smallx, bigx, smallz, bigz, other);
