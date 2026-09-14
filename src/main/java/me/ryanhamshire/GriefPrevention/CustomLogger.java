@@ -34,7 +34,7 @@ class CustomLogger
 {
     private final SimpleDateFormat timestampFormat = new SimpleDateFormat("HH:mm");
     private final SimpleDateFormat filenameFormat = new SimpleDateFormat("yyyy_MM_dd");
-    private final String logFolderPath = DataStore.dataLayerFolderPath + File.separator + "Logs";
+    private final String logFolderPath = DataStore.storageFolderPath + File.separator + "Logs";
     private final int secondsBetweenWrites = 300;
 
     //stringbuilder is not thread safe, stringbuffer is

@@ -90,10 +90,11 @@ public abstract class DataStore
     Long nextClaimID = (long) 0;
 
     //path information, for where stuff stored on disk is well...  stored
-    //all plugin data lives under storage/GriefPrevention.  the plugins folder holds only the jar.
-    protected final static String dataLayerFolderPath = "storage" + File.separator + "GriefPrevention";
-    final static String legacyDataLayerFolderPath = "plugins" + File.separator + "GriefPreventionData";
-    final static String playerDataFolderPath = dataLayerFolderPath + File.separator + "PlayerData";
+    //settings files (config, messages, word lists) live in the plugins folder.
+    protected final static String dataLayerFolderPath = "plugins" + File.separator + "GriefPreventionData";
+    //generated data (claims, players, logs) lives in the storage folder.
+    protected final static String storageFolderPath = "storage" + File.separator + "GriefPrevention";
+    final static String playerDataFolderPath = storageFolderPath + File.separator + "PlayerData";
     final static String configFilePath = dataLayerFolderPath + File.separator + "config.yml";
     final static String messagesFilePath = dataLayerFolderPath + File.separator + "messages.yml";
     final static String softMuteFilePath = dataLayerFolderPath + File.separator + "softMute.txt";
@@ -702,48 +703,95 @@ public abstract class DataStore
 
     abstract void deleteClaimFromSecondaryStorage(Claim claim);
 
+    // Folders that belong in the storage folder, including numbered backups such as ClaimData1.
+    private static final Pattern STORAGE_FOLDER_PATTERN = Pattern.compile("^(ClaimData|PlayerData|Logs)\\d*$");
+
     /**
-     * Move a data folder to a new location, for migrating data out of the plugins folder.
+     * Move generated data into the storage folder and settings files into the plugins folder.
+     */
+    static void migrateStorage()
+    {
+        migrateStorage(new File(dataLayerFolderPath), new File(storageFolderPath));
+    }
+
+    /**
+     * Move generated data into the storage folder and settings files into the plugins folder.
      *
-     * <p>Nothing happens if the old folder is missing or the new folder already has files.
-     * Falls back to copying when the folders are on different drives.</p>
+     * <p>Data folders (ClaimData, PlayerData, Logs) move from the plugins folder to storage. Anything else found
+     * in storage, left there by earlier builds, moves back to the plugins folder. Existing files are never overwritten.</p>
      *
-     * @param oldFolder the folder to move
-     * @param newFolder the destination
+     * @param settingsFolder the plugins data folder holding settings files
+     * @param storageFolder the storage folder holding generated data
+     */
+    static void migrateStorage(@NotNull File settingsFolder, @NotNull File storageFolder)
+    {
+        File[] stored = storageFolder.listFiles();
+        if (stored != null)
+        {
+            for (File file : stored)
+            {
+                if (!STORAGE_FOLDER_PATTERN.matcher(file.getName()).matches())
+                {
+                    moveDataPath(file, new File(settingsFolder, file.getName()));
+                }
+            }
+        }
+
+        File[] settings = settingsFolder.listFiles();
+        if (settings != null)
+        {
+            for (File file : settings)
+            {
+                if (file.isDirectory() && STORAGE_FOLDER_PATTERN.matcher(file.getName()).matches())
+                {
+                    moveDataPath(file, new File(storageFolder, file.getName()));
+                }
+            }
+        }
+    }
+
+    /**
+     * Move a data file or folder to a new location.
+     *
+     * <p>Nothing happens if the old path is missing or the new path already has data.
+     * Falls back to copying when the paths are on different drives.</p>
+     *
+     * @param oldPath the file or folder to move
+     * @param newPath the destination
      * @return true if data was moved
      */
-    static boolean moveDataFolder(@NotNull File oldFolder, @NotNull File newFolder)
+    static boolean moveDataPath(@NotNull File oldPath, @NotNull File newPath)
     {
-        if (!oldFolder.isDirectory()) return false;
+        if (!oldPath.exists()) return false;
 
-        String[] existing = newFolder.list();
-        if (existing != null && existing.length > 0)
+        String[] existing = newPath.list();
+        if ((newPath.isFile()) || (existing != null && existing.length > 0))
         {
-            GriefPrevention.AddLogEntry("Found data in both " + oldFolder.getPath() + " and " + newFolder.getPath() + ".  Using " + newFolder.getPath() + ".  Remove or merge the old folder manually.");
+            GriefPrevention.AddLogEntry("Found data in both " + oldPath.getPath() + " and " + newPath.getPath() + ".  Using " + newPath.getPath() + ".  Remove or merge the old copy manually.");
             return false;
         }
 
         try
         {
-            java.nio.file.Files.deleteIfExists(newFolder.toPath());
-            java.nio.file.Files.createDirectories(newFolder.toPath().toAbsolutePath().getParent());
+            java.nio.file.Files.deleteIfExists(newPath.toPath());
+            java.nio.file.Files.createDirectories(newPath.toPath().toAbsolutePath().getParent());
             try
             {
-                java.nio.file.Files.move(oldFolder.toPath(), newFolder.toPath());
+                java.nio.file.Files.move(oldPath.toPath(), newPath.toPath());
             }
             catch (IOException moveFailed)
             {
-                // Different drives can't be renamed across, so copy the tree and then delete the original.
-                try (Stream<Path> paths = java.nio.file.Files.walk(oldFolder.toPath()))
+                // Different drives can't be renamed across, so copy and then delete the original.
+                try (Stream<Path> paths = java.nio.file.Files.walk(oldPath.toPath()))
                 {
                     for (Path source : (Iterable<Path>) paths::iterator)
                     {
-                        Path target = newFolder.toPath().resolve(oldFolder.toPath().relativize(source));
+                        Path target = newPath.toPath().resolve(oldPath.toPath().relativize(source));
                         if (java.nio.file.Files.isDirectory(source)) java.nio.file.Files.createDirectories(target);
                         else java.nio.file.Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
                     }
                 }
-                try (Stream<Path> paths = java.nio.file.Files.walk(oldFolder.toPath()))
+                try (Stream<Path> paths = java.nio.file.Files.walk(oldPath.toPath()))
                 {
                     for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) java.nio.file.Files.delete(path);
                 }
@@ -751,11 +799,11 @@ public abstract class DataStore
         }
         catch (IOException e)
         {
-            GriefPrevention.AddLogEntry("Unable to move data from " + oldFolder.getPath() + " to " + newFolder.getPath() + ".  Move it manually.  Details: " + e.getMessage());
+            GriefPrevention.AddLogEntry("Unable to move data from " + oldPath.getPath() + " to " + newPath.getPath() + ".  Move it manually.  Details: " + e.getMessage());
             return false;
         }
 
-        GriefPrevention.AddLogEntry("Moved data from " + oldFolder.getPath() + " to " + newFolder.getPath() + ".");
+        GriefPrevention.AddLogEntry("Moved data from " + oldPath.getPath() + " to " + newPath.getPath() + ".");
         return true;
     }
 
