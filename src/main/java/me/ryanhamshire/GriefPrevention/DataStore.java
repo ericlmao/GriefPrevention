@@ -50,6 +50,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -766,8 +767,11 @@ public abstract class DataStore
     /**
      * Get the top level claim whose buffer radius contains a location.
      *
+     * <p>When several buffers overlap, the claim with the nearest edge wins. Ties go to the
+     * bigger claim, then the older claim.</p>
+     *
      * @param location the location
-     * @param cachedClaim the cached claim, if any
+     * @param cachedClaim unused, kept for compatibility; the nearest claim is always recomputed
      * @return the nearby claim or null if the location is not within the buffer radius of any claim
      */
     synchronized public @Nullable Claim getClaimNear(@NotNull Location location, @Nullable Claim cachedClaim)
@@ -775,9 +779,8 @@ public abstract class DataStore
         int radius = GriefPrevention.instance.config_claims_bufferRadius;
         if (radius <= 0) return null;
 
-        if (cachedClaim != null && cachedClaim.parent != null) cachedClaim = cachedClaim.parent;
-        if (cachedClaim != null && cachedClaim.inDataStore && isInBuffer(cachedClaim, location, radius)) return cachedClaim;
-
+        Claim nearest = null;
+        int nearestDistance = Integer.MAX_VALUE;
         int x = location.getBlockX();
         int z = location.getBlockZ();
         for (int chunkX = (x - radius) >> 4; chunkX <= (x + radius) >> 4; chunkX++)
@@ -789,12 +792,54 @@ public abstract class DataStore
 
                 for (Claim claim : claimsInChunk)
                 {
-                    if (claim.inDataStore && isInBuffer(claim, location, radius)) return claim;
+                    if (!claim.inDataStore || !isInBuffer(claim, location, radius)) continue;
+
+                    int distance = claim.getEdgeDistance(location);
+                    if (nearest == null || distance < nearestDistance
+                            || (distance == nearestDistance && BUFFER_PRIORITY.compare(claim, nearest) < 0))
+                    {
+                        nearest = claim;
+                        nearestDistance = distance;
+                    }
                 }
             }
         }
 
-        return null;
+        return nearest;
+    }
+
+    /**
+     * Orders claims by buffer priority: bigger claims first, then older claims.
+     */
+    static final Comparator<Claim> BUFFER_PRIORITY = Comparator
+            .comparingInt((Claim claim) -> -claim.getArea())
+            .thenComparing(Claim::getID, Comparator.nullsLast(Comparator.naturalOrder()));
+
+    /**
+     * Check whether a claim outranks another for growing into its buffer.
+     *
+     * <p>Admin claims outrank player claims. Between player claims, a claim must be both bigger and older.</p>
+     *
+     * @param claim the claim being resized
+     * @param other the neighboring claim
+     * @return true if the claim may grow into the neighbor's buffer
+     */
+    static boolean outranks(@NotNull Claim claim, @NotNull Claim other)
+    {
+        if (claim.isAdminClaim() != other.isAdminClaim()) return claim.isAdminClaim();
+        if (claim.isAdminClaim()) return true;
+
+        return claim.getArea() > other.getArea()
+                && claim.getID() != null && other.getID() != null
+                && claim.getID() < other.getID();
+    }
+
+    // Horizontal gap between two boxes, measured per axis; the larger axis gap is used.
+    private static int boxDistance(int minX, int maxX, int minZ, int maxZ, @NotNull BoundingBox other)
+    {
+        int dx = Math.max(other.getMinX() - maxX, minX - other.getMaxX());
+        int dz = Math.max(other.getMinZ() - maxZ, minZ - other.getMaxZ());
+        return Math.max(dx, dz);
     }
 
     private static boolean isInBuffer(@NotNull Claim claim, @NotNull Location location, int radius)
@@ -1063,22 +1108,39 @@ public abstract class DataStore
             }
         }
 
-        //new top level claims can't be made within the buffer radius of another claim
+        //top level claims must keep their buffers apart from other owners' claims, unless ignoring claims
         int bufferRadius = GriefPrevention.instance.config_claims_bufferRadius;
-        if (newClaim.parent == null && id == null && bufferRadius > 0)
+        if (newClaim.parent == null && bufferRadius > 0
+                && (creatingPlayer == null || !this.getPlayerData(creatingPlayer.getUniqueId()).ignoreClaims))
         {
-            BoundingBox buffer = new BoundingBox(smallx - bufferRadius, smally, smallz - bufferRadius, bigx + bufferRadius, smally, bigz + bufferRadius);
-            for (Claim otherClaim : this.getChunkClaims(world, buffer))
+            int minimumGap = bufferRadius * 2;
+            Claim resizing = id != null ? this.claimIDMap.get(id) : null;
+            BoundingBox searchArea = new BoundingBox(smallx - minimumGap, smally, smallz - minimumGap, bigx + minimumGap, smally, bigz + minimumGap);
+            for (Claim otherClaim : this.getChunkClaims(world, searchArea))
             {
+                if (otherClaim.parent != null || Objects.equals(otherClaim.id, id)) continue;
+
+                // A player's own claims never block each other.
+                if (Objects.equals(otherClaim.ownerID, ownerID)) continue;
+
                 BoundingBox other = new BoundingBox(otherClaim);
-                if (otherClaim.parent == null && buffer.getMinX() <= other.getMaxX() && buffer.getMaxX() >= other.getMinX()
-                        && buffer.getMinZ() <= other.getMaxZ() && buffer.getMaxZ() >= other.getMinZ())
+                int distance = boxDistance(smallx, bigx, smallz, bigz, other);
+                if (distance > minimumGap) continue;
+
+                if (resizing != null)
                 {
-                    result.succeeded = false;
-                    result.claim = otherClaim;
-                    result.tooClose = true;
-                    return result;
+                    // Higher priority claims may grow into a neighbor's buffer.
+                    if (outranks(resizing, otherClaim)) continue;
+
+                    // Claims that were already too close may resize as long as they don't get closer.
+                    BoundingBox current = new BoundingBox(resizing);
+                    if (distance >= boxDistance(current.getMinX(), current.getMaxX(), current.getMinZ(), current.getMaxZ(), other)) continue;
                 }
+
+                result.succeeded = false;
+                result.claim = otherClaim;
+                result.tooClose = true;
+                return result;
             }
         }
 
@@ -1414,7 +1476,12 @@ public abstract class DataStore
         }
         else
         {
-            if (result.claim != null)
+            if (result.tooClose)
+            {
+                GriefPrevention.sendMessage(player, TextMode.Err, Messages.ResizeFailTooClose);
+                BoundaryVisualization.visualizeClaim(player, result.claim, VisualizationType.CONFLICT_ZONE);
+            }
+            else if (result.claim != null)
             {
                 //inform player
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.ResizeFailOverlap);
