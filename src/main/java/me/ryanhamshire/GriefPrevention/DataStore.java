@@ -47,6 +47,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -88,7 +90,9 @@ public abstract class DataStore
     Long nextClaimID = (long) 0;
 
     //path information, for where stuff stored on disk is well...  stored
-    protected final static String dataLayerFolderPath = "plugins" + File.separator + "GriefPreventionData";
+    //all plugin data lives under storage/GriefPrevention.  the plugins folder holds only the jar.
+    protected final static String dataLayerFolderPath = "storage" + File.separator + "GriefPrevention";
+    final static String legacyDataLayerFolderPath = "plugins" + File.separator + "GriefPreventionData";
     final static String playerDataFolderPath = dataLayerFolderPath + File.separator + "PlayerData";
     final static String configFilePath = dataLayerFolderPath + File.separator + "config.yml";
     final static String messagesFilePath = dataLayerFolderPath + File.separator + "messages.yml";
@@ -697,6 +701,63 @@ public abstract class DataStore
     }
 
     abstract void deleteClaimFromSecondaryStorage(Claim claim);
+
+    /**
+     * Move a data folder to a new location, for migrating data out of the plugins folder.
+     *
+     * <p>Nothing happens if the old folder is missing or the new folder already has files.
+     * Falls back to copying when the folders are on different drives.</p>
+     *
+     * @param oldFolder the folder to move
+     * @param newFolder the destination
+     * @return true if data was moved
+     */
+    static boolean moveDataFolder(@NotNull File oldFolder, @NotNull File newFolder)
+    {
+        if (!oldFolder.isDirectory()) return false;
+
+        String[] existing = newFolder.list();
+        if (existing != null && existing.length > 0)
+        {
+            GriefPrevention.AddLogEntry("Found data in both " + oldFolder.getPath() + " and " + newFolder.getPath() + ".  Using " + newFolder.getPath() + ".  Remove or merge the old folder manually.");
+            return false;
+        }
+
+        try
+        {
+            java.nio.file.Files.deleteIfExists(newFolder.toPath());
+            java.nio.file.Files.createDirectories(newFolder.toPath().toAbsolutePath().getParent());
+            try
+            {
+                java.nio.file.Files.move(oldFolder.toPath(), newFolder.toPath());
+            }
+            catch (IOException moveFailed)
+            {
+                // Different drives can't be renamed across, so copy the tree and then delete the original.
+                try (Stream<Path> paths = java.nio.file.Files.walk(oldFolder.toPath()))
+                {
+                    for (Path source : (Iterable<Path>) paths::iterator)
+                    {
+                        Path target = newFolder.toPath().resolve(oldFolder.toPath().relativize(source));
+                        if (java.nio.file.Files.isDirectory(source)) java.nio.file.Files.createDirectories(target);
+                        else java.nio.file.Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                try (Stream<Path> paths = java.nio.file.Files.walk(oldFolder.toPath()))
+                {
+                    for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) java.nio.file.Files.delete(path);
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            GriefPrevention.AddLogEntry("Unable to move data from " + oldFolder.getPath() + " to " + newFolder.getPath() + ".  Move it manually.  Details: " + e.getMessage());
+            return false;
+        }
+
+        GriefPrevention.AddLogEntry("Moved data from " + oldFolder.getPath() + " to " + newFolder.getPath() + ".");
+        return true;
+    }
 
     //gets the claim at a specific location
     //ignoreHeight = TRUE means that a location UNDER an existing claim will return the claim
