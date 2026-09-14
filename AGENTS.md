@@ -7,6 +7,12 @@
 - PR descriptions must be in caveman format, with exception of the user's prompts verbatim.
 - PR comments must include the user's prompt(s) verbatim in addition to any AI response.
 
+### Storage
+
+- All plugin data lives in `storage/GriefPrevention/`, never in `plugins/`. The `plugins/` folder holds only the jar.
+- Every data path derives from `DataStore.dataLayerFolderPath`. Never hardcode `plugins/` or `storage/` elsewhere.
+- Any change that moves data files must ship an automatic migration that runs on enable before data is read, and must leave existing data untouched when both old and new locations have files.
+
 ### Issues
 
 - All issue descriptions and comments may only include the user's prompts verbatim.

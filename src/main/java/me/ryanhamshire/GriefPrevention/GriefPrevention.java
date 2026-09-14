@@ -277,6 +277,9 @@ public class GriefPrevention extends JavaPlugin
         instance = this;
         log = instance.getLogger();
 
+        //move data out of the plugins folder into the storage folder, must happen before anything reads data
+        DataStore.moveDataFolder(new File(DataStore.legacyDataLayerFolderPath), new File(DataStore.dataLayerFolderPath));
+
         this.loadConfig();
 
         this.customLogger = new CustomLogger();
@@ -319,10 +322,10 @@ public class GriefPrevention extends JavaPlugin
             {
                 if (!FlatFileDataStore.hasData())
                 {
-                    File claimdata = new File("plugins" + File.separator + "GriefPreventionData" + File.separator + "ClaimData");
+                    File claimdata = new File(DataStore.dataLayerFolderPath, "ClaimData");
                     oldclaimdata.renameTo(claimdata);
                     File oldplayerdata = new File(getDataFolder(), "PlayerData");
-                    File playerdata = new File("plugins" + File.separator + "GriefPreventionData" + File.separator + "PlayerData");
+                    File playerdata = new File(DataStore.dataLayerFolderPath, "PlayerData");
                     oldplayerdata.renameTo(playerdata);
                 }
             }
