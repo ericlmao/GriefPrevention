@@ -2164,7 +2164,7 @@ class PlayerEventHandler implements Listener
                 {
                     if (result.tooClose)
                     {
-                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimFailTooClose, String.valueOf(instance.config_claims_bufferRadius));
+                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimFailTooClose, String.valueOf(instance.config_claims_bufferRadius * 2));
                         BoundaryVisualization.visualizeClaim(player, result.claim, VisualizationType.CONFLICT_ZONE, clickedBlock);
                     }
                     else if (result.claim != null)

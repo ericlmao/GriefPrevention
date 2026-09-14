@@ -225,6 +225,24 @@ public class Claim
         this.inheritNothing = inheritNothing;
     }
 
+    /**
+     * Get the horizontal distance from the claim's edge to a location.
+     *
+     * <p>Distance is measured per axis and the larger axis distance is used, so the result
+     * matches the square band used by the claim buffer. Locations inside the claim return 0.</p>
+     *
+     * @param location the location
+     * @return the distance in blocks from the nearest claim edge
+     */
+    public int getEdgeDistance(@NotNull Location location)
+    {
+        int x = location.getBlockX();
+        int z = location.getBlockZ();
+        int dx = Math.max(Math.max(this.lesserBoundaryCorner.getBlockX() - x, 0), x - this.greaterBoundaryCorner.getBlockX());
+        int dz = Math.max(Math.max(this.lesserBoundaryCorner.getBlockZ() - z, 0), z - this.greaterBoundaryCorner.getBlockZ());
+        return Math.max(dx, dz);
+    }
+
     //distance check for claims, distance in this case is a band around the outside of the claim rather then euclidean distance
     public boolean isNear(Location location, int howNear)
     {
