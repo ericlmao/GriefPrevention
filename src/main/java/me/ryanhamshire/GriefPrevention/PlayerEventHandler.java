@@ -1506,10 +1506,16 @@ class PlayerEventHandler implements Listener
 
         PlayerData playerData = null;
 
-        //Turtle eggs
+        // Physical activation needs access trust; destroying turtle eggs still needs build trust.
         if (action == Action.PHYSICAL)
         {
-            if (clickedBlockType != Material.TURTLE_EGG)
+            ClaimPermission permission;
+            if (clickedBlockType == Material.TURTLE_EGG)
+                permission = ClaimPermission.Build;
+            else if (instance.config_claims_preventPressurePlates && Tag.PRESSURE_PLATES.isTagged(clickedBlockType)
+                    && instance.claimsEnabledForWorld(clickedBlock.getWorld()))
+                permission = ClaimPermission.Access;
+            else
                 return;
             playerData = this.dataStore.getPlayerData(player.getUniqueId());
             Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
@@ -1517,7 +1523,7 @@ class PlayerEventHandler implements Listener
             {
                 playerData.lastClaim = claim;
 
-                Supplier<String> noAccessReason = ProtectionHelper.withBufferDenial(claim, clickedBlock.getLocation(), claim.checkPermission(player, ClaimPermission.Build, event));
+                Supplier<String> noAccessReason = ProtectionHelper.withBufferDenial(claim, clickedBlock.getLocation(), claim.checkPermission(player, permission, event));
                 if (noAccessReason != null)
                 {
                     event.setCancelled(true);
