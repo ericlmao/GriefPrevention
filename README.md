@@ -47,3 +47,16 @@ Newer major versions of GriefPrevention are developed on the `master` branch. Th
 ---
 
 [![Weird flex but ok](https://bstats.org/signatures/bukkit/GriefPrevention-legacy.svg)](https://bstats.org/plugin/bukkit/GriefPrevention-legacy)
+
+## Pressure plate access
+
+`GriefPrevention.Claims.PreventPressurePlates` defaults to `true`. Players need
+Access Trust (or Container/Build Trust) to step on pressure plates in claims,
+subdivisions, and claim buffers. Claim owners, public access trust, and existing
+administrator bypass rules work normally. Unclaimed land outside buffers and
+worlds with claims disabled remain unaffected. Set this option to `false` to
+restore unrestricted player activation.
+
+This setting covers player stepping only. Items, projectiles, mobs, and redstone
+remain unchanged so existing farms keep working. Farmland trampling and turtle
+egg destruction retain their separate protection rules.

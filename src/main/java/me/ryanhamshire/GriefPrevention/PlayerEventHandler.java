@@ -51,7 +51,6 @@ import org.bukkit.entity.Hanging;
 import org.bukkit.entity.Llama;
 import org.bukkit.entity.Mule;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.SulfurCube;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.entity.minecart.PoweredMinecart;
@@ -1113,8 +1112,8 @@ class PlayerEventHandler implements Listener
             }
         }
 
-        //don't allow interaction with item frames, armor stands, or sulfur cubes in claimed areas without build permission
-        if (entity.getType() == EntityType.ARMOR_STAND || entity instanceof Hanging || entity instanceof SulfurCube)
+        //don't allow interaction with item frames or armor stands in claimed areas without build permission
+        if (entity.getType() == EntityType.ARMOR_STAND || entity instanceof Hanging)
         {
             Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, entity.getLocation(), ClaimPermission.Build, event);
             if (noBuildReason != null)
@@ -1507,10 +1506,16 @@ class PlayerEventHandler implements Listener
 
         PlayerData playerData = null;
 
-        //Turtle eggs
+        // Physical activation needs access trust; destroying turtle eggs still needs build trust.
         if (action == Action.PHYSICAL)
         {
-            if (clickedBlockType != Material.TURTLE_EGG)
+            ClaimPermission permission;
+            if (clickedBlockType == Material.TURTLE_EGG)
+                permission = ClaimPermission.Build;
+            else if (instance.config_claims_preventPressurePlates && Tag.PRESSURE_PLATES.isTagged(clickedBlockType)
+                    && instance.claimsEnabledForWorld(clickedBlock.getWorld()))
+                permission = ClaimPermission.Access;
+            else
                 return;
             playerData = this.dataStore.getPlayerData(player.getUniqueId());
             Claim claim = this.dataStore.getProtectingClaim(clickedBlock.getLocation(), playerData.lastClaim);
@@ -1518,7 +1523,7 @@ class PlayerEventHandler implements Listener
             {
                 playerData.lastClaim = claim;
 
-                Supplier<String> noAccessReason = ProtectionHelper.withBufferDenial(claim, clickedBlock.getLocation(), claim.checkPermission(player, ClaimPermission.Build, event));
+                Supplier<String> noAccessReason = ProtectionHelper.withBufferDenial(claim, clickedBlock.getLocation(), claim.checkPermission(player, permission, event));
                 if (noAccessReason != null)
                 {
                     event.setCancelled(true);
