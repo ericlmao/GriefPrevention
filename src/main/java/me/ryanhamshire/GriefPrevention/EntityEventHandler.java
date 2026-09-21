@@ -28,6 +28,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Allay;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.FallingBlock;
@@ -38,6 +39,7 @@ import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Vehicle;
+import org.bukkit.entity.memory.MemoryKey;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -768,6 +770,24 @@ public class EntityEventHandler implements Listener
         if (event.getEntity() instanceof Player)
         {
             player = (Player) event.getEntity();
+        }
+
+        // Allays collect on behalf of the player who gave them their held item.
+        // Check the item location, including subdivisions and claim buffers, not the allay location.
+        if (!event.isCancelled() && instance.config_claims_preventTheft
+                && event.getEntity() instanceof Allay allay
+                && instance.claimsEnabledForWorld(event.getItem().getWorld()))
+        {
+            Claim claim = this.dataStore.getProtectingClaim(event.getItem().getLocation(), null);
+            if (claim != null)
+            {
+                UUID likedPlayer = allay.getMemory(MemoryKey.LIKED_PLAYER);
+                // A note block changes delivery, not whose trust authorizes collection.
+                if (likedPlayer == null || claim.checkPermission(likedPlayer, ClaimPermission.Container, event) != null)
+                {
+                    event.setCancelled(true);
+                }
+            }
         }
 
         //FEATURE: Lock dropped items to player who dropped them.
